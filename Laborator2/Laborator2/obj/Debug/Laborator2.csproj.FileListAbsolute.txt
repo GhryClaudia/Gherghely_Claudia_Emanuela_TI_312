@@ -1,0 +1,8 @@
+D:\An_III\Laborator2\Laborator2\bin\Debug\Laborator2.exe.config
+D:\An_III\Laborator2\Laborator2\bin\Debug\Laborator2.exe
+D:\An_III\Laborator2\Laborator2\bin\Debug\Laborator2.pdb
+D:\An_III\Laborator2\Laborator2\obj\Debug\Laborator2.csproj.AssemblyReference.cache
+D:\An_III\Laborator2\Laborator2\obj\Debug\Laborator2.csproj.CoreCompileInputs.cache
+D:\An_III\Laborator2\Laborator2\obj\Debug\Laborator2.exe
+D:\An_III\Laborator2\Laborator2\obj\Debug\Laborator2.pdb
+D:\An_III\Laborator2\Laborator2\obj\Debug\Laborator2.exe.config
