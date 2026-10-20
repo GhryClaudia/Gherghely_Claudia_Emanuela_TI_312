@@ -1,9 +1,9 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\An_III\\Laborator2\\",
+  "WorkspaceRootPath": "D:\\An_III\\Semestrul_1\\Gherghely_Claudia_Emanuela_TI_312\\Laborator2\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{0BB65727-5220-4609-A9A4-49889859334B}|Laborator2\\Laborator2.csproj|d:\\an_iii\\laborator2\\laborator2\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{0BB65727-5220-4609-A9A4-49889859334B}|Laborator2\\Laborator2.csproj|d:\\an_iii\\semestrul_1\\gherghely_claudia_emanuela_ti_312\\laborator2\\laborator2\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{0BB65727-5220-4609-A9A4-49889859334B}|Laborator2\\Laborator2.csproj|solutionrelative:laborator2\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -20,11 +20,11 @@
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "Class1.cs",
-              "DocumentMoniker": "D:\\An_III\\Laborator2\\Laborator2\\Class1.cs",
+              "DocumentMoniker": "D:\\An_III\\Semestrul_1\\Gherghely_Claudia_Emanuela_TI_312\\Laborator2\\Laborator2\\Class1.cs",
               "RelativeDocumentMoniker": "Laborator2\\Class1.cs",
-              "ToolTip": "D:\\An_III\\Laborator2\\Laborator2\\Class1.cs*",
+              "ToolTip": "D:\\An_III\\Semestrul_1\\Gherghely_Claudia_Emanuela_TI_312\\Laborator2\\Laborator2\\Class1.cs*",
               "RelativeToolTip": "Laborator2\\Class1.cs*",
-              "ViewState": "AgIAABwAAAAAAAAAAAAtwCoAAABLAAAAAAAAAA==",
+              "ViewState": "AgIAAGcAAAAAAAAAAAAkwHQAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-12T15:21:03.168Z",
               "EditorCaption": ""
