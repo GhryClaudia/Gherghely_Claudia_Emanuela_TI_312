@@ -11,12 +11,29 @@ class Program
         string folderTesting = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\ReutersDataSet\Reuters\Reuters_34\Testing";
         string folderTraining = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\ReutersDataSet\Reuters\Reuters_34\Training";
         string fisierStopwords = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\stopwords.txt";
-        string fisierTesting = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\vectoriTesting.txt";
-        string fisierTraining = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\vectoriTraining.txt";
+        string fisierIesire = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\vectori.txt";
         HashSet<string> stopwords = CitesteStopwords(fisierStopwords);
-        ProceseazaFolder(folderTesting, fisierTesting, stopwords);
-        ProceseazaFolder(folderTraining, fisierTraining, stopwords);
-        Console.WriteLine("Fisiere generate.");
+
+        List<string> vocabular = new List<string>();
+        Dictionary<string, int> indici = new Dictionary<string, int>();
+        List<string> documente = new List<string>();
+
+        ProceseazaFolder(folderTraining, "Training", stopwords, vocabular, indici, documente);
+
+        ProceseazaFolder(folderTesting, "Testing", stopwords, vocabular, indici, documente);
+
+        using (StreamWriter writer = new StreamWriter(fisierIesire))
+        {
+            foreach (string cuvant in vocabular)
+                writer.WriteLine("@attribute " + cuvant);
+
+            writer.WriteLine("@data");
+
+            foreach (string document in documente)
+                writer.WriteLine(document);
+        }
+
+        Console.WriteLine("Fisier generat.");
         Console.ReadLine();
     }
     static HashSet<string> CitesteStopwords(string cale)
@@ -43,80 +60,80 @@ class Program
         }
         return rezultat;
     }
-    static void ProceseazaFolder(string folder, string fisierIesire, HashSet<string> stopwords)
+    static void ProceseazaFolder(string folder, string numeFolder, HashSet<string> stopwords, List<string> vocabular, Dictionary<string, int> indici, List<string> documente)
     {
         PorterStemmer stemmer = new PorterStemmer();
-        List<string> vocabular = new List<string>();
-        Dictionary<string, int> indici = new Dictionary<string, int>();
-        List<string> numeDocumente = new List<string>();
-        List<SortedDictionary<int, int>> vectori = new List<SortedDictionary<int, int>>();
+
         string[] fisiere = Directory.GetFiles(folder, "*.xml");
         Array.Sort(fisiere);
+
         foreach (string fisier in fisiere)
         {
             try
             {
                 XDocument doc = XDocument.Load(fisier);
                 SortedDictionary<int, int> vector = new SortedDictionary<int, int>();
+                List<string> categorii = new List<string>();
+
                 foreach (XElement element in doc.Descendants())
                 {
                     string nume = element.Name.LocalName;
+
                     if (nume == "title" || nume == "text")
                     {
-                        string[] cuvinte = element.Value.Split(
-                            new char[] { ' ', '\n', '\r', '\t' },
-                            StringSplitOptions.RemoveEmptyEntries);
+                        string[] cuvinte = element.Value.Split(new char[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
                         foreach (string cuvant in cuvinte)
                         {
                             string curat = CurataCuvant(cuvant);
+
                             if (curat == "" || stopwords.Contains(curat))
                                 continue;
+
                             string stem = stemmer.StemWord(curat);
+
                             if (!indici.ContainsKey(stem))
                             {
                                 indici[stem] = vocabular.Count;
                                 vocabular.Add(stem);
                             }
+
                             int index = indici[stem];
+
                             if (vector.ContainsKey(index))
-                                vector[index] = vector[index] + 1;
+                                vector[index]++;
                             else
                                 vector[index] = 1;
                         }
                     }
+
+                    if (nume == "codes" && (string)element.Attribute("class") == "bip:topics:1.0")
+                    {
+                        foreach (XElement cod in element.Elements())
+                        {
+                            string valoare = (string)cod.Attribute("code");
+
+                            if (!string.IsNullOrWhiteSpace(valoare))
+                                categorii.Add(valoare);
+                        }
+                    }
                 }
-                numeDocumente.Add(Path.GetFileName(fisier));
-                vectori.Add(vector);
+
+                string linie = Path.GetFileNameWithoutExtension(fisier) + " #";
+
+                foreach (KeyValuePair<int, int> pereche in vector)
+                    linie += " " + pereche.Key + ":" + pereche.Value;
+
+                linie += " # " + string.Join(" ", categorii);
+                linie += " # " + numeFolder;
+
+                documente.Add(linie);
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Eroare la " + fisier + ": " + ex.Message);
             }
         }
-        StreamWriter writer = new StreamWriter(fisierIesire);
-        writer.WriteLine("VOCABULAR:");
-        for (int i = 0; i < vocabular.Count; i++)
-        {
-            writer.WriteLine(i + ": " + vocabular[i]);
-        }
-        writer.WriteLine();
-        writer.WriteLine("VECTORI:");
-        for (int i = 0; i < numeDocumente.Count; i++)
-        {
-            string linie = numeDocumente[i] + ": ";
-            bool primul = true;
-            foreach (KeyValuePair<int, int> pereche in vectori[i])
-            {
-                if (!primul)
-                    linie = linie + ", ";
-                linie = linie + pereche.Key + "=" + pereche.Value;
-                primul = false;
-            }
-            writer.WriteLine(linie);
-        }
-        writer.Close();
-        Console.WriteLine(folder + ": " + vocabular.Count + " cuvinte, "
-                          + numeDocumente.Count + " documente.");
     }
 }
 class PorterStemmer
