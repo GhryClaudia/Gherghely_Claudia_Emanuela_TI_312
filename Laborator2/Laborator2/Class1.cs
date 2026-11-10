@@ -1,140 +1,255 @@
 ﻿using System;
-using System.IO;
-using System.Text;
-using System.Xml.Linq;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 class Program
 {
     static void Main()
     {
-        string folderTesting = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\ReutersDataSet\Reuters\Reuters_34\Testing";
-        string folderTraining = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\ReutersDataSet\Reuters\Reuters_34\Training";
-        string fisierStopwords = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\stopwords.txt";
-        string fisierIesire = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\vectori.txt";
+        string folderTest = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\ReutersDataSet\Reuters\Reuters_34\Testing";
+        string folderAntrenare = @"D:\An_III\Semestrul_1\Sisteme de recunoastere a formelor\ReutersDataSet\Reuters\Reuters_34\Training";
+        string fisierStopwords = @"D:\An_III\Semestrul_1\Gherghely_Claudia_Emanuela_TI_312\stopwords.txt";
+        string fisierAntrenare = @"D:\An_III\Semestrul_1\Gherghely_Claudia_Emanuela_TI_312\fisierAntrenare.txt";
+        string fisierTest = @"D:\An_III\Semestrul_1\Gherghely_Claudia_Emanuela_TI_312\fisierTest.txt";
+        int nrAtributeDorite = 100;
+
         HashSet<string> stopwords = CitesteStopwords(fisierStopwords);
 
         List<string> vocabular = new List<string>();
-        Dictionary<string, int> indici = new Dictionary<string, int>();
-        List<string> documente = new List<string>();
+        Dictionary<string, int> dictionarGlobal = new Dictionary<string, int>();
+        List<Doc> documente = new List<Doc>();
 
-        ProceseazaFolder(folderTraining, "Training", stopwords, vocabular, indici, documente);
+        ProceseazaFolder(folderAntrenare, "Training", stopwords, vocabular, dictionarGlobal, documente);
+        ProceseazaFolder(folderTest, "Testing", stopwords, vocabular, dictionarGlobal, documente);
 
-        ProceseazaFolder(folderTesting, "Testing", stopwords, vocabular, indici, documente);
+        List<Doc> docsAntrenare = documente.Where(d => d.tipSet == "Training").ToList();
+        List<Doc> docsTest = documente.Where(d => d.tipSet == "Testing").ToList();
 
-        using (StreamWriter writer = new StreamWriter(fisierIesire))
-        {
-            foreach (string cuvant in vocabular)
-                writer.WriteLine("@attribute " + cuvant);
+        double[] castig = CalculeazaCastig(docsAntrenare, vocabular.Count);
+        List<int> atributeAlese = AlegeAtribute(castig, nrAtributeDorite);
+        Dictionary<int, int> indexNou = CreazaIndexNou(atributeAlese);
 
-            writer.WriteLine("@data");
+        ScrieFisier(fisierAntrenare, docsAntrenare, vocabular, castig, atributeAlese, indexNou);
+        ScrieFisier(fisierTest, docsTest, vocabular, castig, atributeAlese, indexNou);
 
-            foreach (string document in documente)
-                writer.WriteLine(document);
-        }
-
-        Console.WriteLine("Fisier generat.");
+        Console.WriteLine("Fisiere generate.");
         Console.ReadLine();
     }
+
     static HashSet<string> CitesteStopwords(string cale)
     {
-        HashSet<string> rezultat = new HashSet<string>();
-        string[] linii = File.ReadAllLines(cale);
-        foreach (string linie in linii)
+        HashSet<string> stopwords = new HashSet<string>();
+        foreach (string linie in File.ReadAllLines(cale))
         {
             string cuvant = linie.Trim().ToLower();
             if (cuvant != "")
-                rezultat.Add(cuvant);
+                stopwords.Add(cuvant);
         }
-        return rezultat;
+        return stopwords;
     }
+
     static string CurataCuvant(string cuvant)
     {
-        string rezultat = "";
         foreach (char c in cuvant)
-        {
-            if (char.IsDigit(c))
-                return "";
-            if (char.IsLetter(c))
-                rezultat = rezultat + char.ToLower(c);
-        }
-        return rezultat;
+            if (char.IsDigit(c)) return "";
+        return cuvant.ToLower();
     }
-    static void ProceseazaFolder(string folder, string numeFolder, HashSet<string> stopwords, List<string> vocabular, Dictionary<string, int> indici, List<string> documente)
+
+    static double Entropie(int nr1, int nr2)
+    {
+        int total = nr1 + nr2;
+        double entropie = 0;
+        if (nr1 > 0) entropie -= (double)nr1 / total * Math.Log((double)nr1 / total, 2);
+        if (nr2 > 0) entropie -= (double)nr2 / total * Math.Log((double)nr2 / total, 2);
+        return entropie;
+    }
+
+    static double[] CalculeazaCastig(List<Doc> docs, int nrAtribute)
+    {
+        int nrDocs = docs.Count;
+
+        Dictionary<string, int> idCategorie = new Dictionary<string, int>();
+        foreach (Doc doc in docs)
+            foreach (string categorie in doc.categorii)
+                if (!idCategorie.ContainsKey(categorie))
+                    idCategorie[categorie] = idCategorie.Count;
+
+        int nrCategorii = idCategorie.Count;
+        int[] docsCuCategoria = new int[nrCategorii];
+        int[] docsCuAtributul = new int[nrAtribute];
+        int[,] docsCuAmbele = new int[nrAtribute, nrCategorii];
+
+        foreach (Doc doc in docs)
+        {
+            int[] idCategoriiDoc = doc.categorii.Select(c => idCategorie[c]).ToArray();
+
+            foreach (int cat in idCategoriiDoc)
+                docsCuCategoria[cat]++;
+
+            foreach (int atribut in doc.frecvente.Keys)
+            {
+                docsCuAtributul[atribut]++;
+                foreach (int cat in idCategoriiDoc)
+                    docsCuAmbele[atribut, cat]++;
+            }
+        }
+
+        double[] entropieCategorie = new double[nrCategorii];
+        for (int cat = 0; cat < nrCategorii; cat++)
+            entropieCategorie[cat] = Entropie(docsCuCategoria[cat], nrDocs - docsCuCategoria[cat]);
+
+        double[] castig = new double[nrAtribute];
+        for (int atribut = 0; atribut < nrAtribute; atribut++)
+        {
+            if (docsCuAtributul[atribut] < 3) continue;
+
+            int cuAtribut = docsCuAtributul[atribut];
+            int faraAtribut = nrDocs - cuAtribut;
+            double castigMax = 0;
+
+            for (int cat = 0; cat < nrCategorii; cat++)
+            {
+                int cuAtributCuCat = docsCuAmbele[atribut, cat];
+                int cuAtributFaraCat = cuAtribut - cuAtributCuCat;
+                int faraAtributCuCat = docsCuCategoria[cat] - cuAtributCuCat;
+                int faraAtributFaraCat = faraAtribut - faraAtributCuCat;
+
+                double castigCurent = entropieCategorie[cat]
+                    - (double)cuAtribut / nrDocs * Entropie(cuAtributCuCat, cuAtributFaraCat)
+                    - (double)faraAtribut / nrDocs * Entropie(faraAtributCuCat, faraAtributFaraCat);
+
+                if (castigCurent > castigMax) castigMax = castigCurent;
+            }
+            castig[atribut] = castigMax;
+        }
+        return castig;
+    }
+
+    static List<int> AlegeAtribute(double[] castig, int nrDorit)
+    {
+        return Enumerable.Range(0, castig.Length)
+                         .OrderByDescending(i => castig[i])
+                         .Take(nrDorit)
+                         .OrderBy(i => i)
+                         .ToList();
+    }
+
+    static Dictionary<int, int> CreazaIndexNou(List<int> atributeAlese)
+    {
+        Dictionary<int, int> indexNou = new Dictionary<int, int>();
+        for (int poz = 0; poz < atributeAlese.Count; poz++)
+            indexNou[atributeAlese[poz]] = poz;
+        return indexNou;
+    }
+
+    static void ScrieFisier(string cale, List<Doc> docs, List<string> vocabular,
+                            double[] castig, List<int> atributeAlese, Dictionary<int, int> indexNou)
+    {
+        using (StreamWriter writer = new StreamWriter(cale))
+        {
+            foreach (int indexVechi in atributeAlese)
+                writer.WriteLine("@attribute " + vocabular[indexVechi] + " "
+                    + castig[indexVechi].ToString("0.######", CultureInfo.InvariantCulture));
+
+            writer.WriteLine("@data");
+
+            foreach (Doc doc in docs)
+            {
+                string linie = doc.id + " #";
+                foreach (KeyValuePair<int, int> pereche in doc.frecvente.OrderBy(p => p.Key))
+                    if (indexNou.ContainsKey(pereche.Key))
+                        linie += " " + (indexNou[pereche.Key] + 1) + ":" + pereche.Value;
+
+                linie += " # " + string.Join(" ", doc.categorii) + " # " + doc.tipSet;
+                writer.WriteLine(linie);
+            }
+        }
+    }
+
+    static void ProceseazaFolder(string folder, string tipSet, HashSet<string> stopwords,
+                                 List<string> vocabular, Dictionary<string, int> dictionarGlobal, List<Doc> documente)
     {
         PorterStemmer stemmer = new PorterStemmer();
 
-        string[] fisiere = Directory.GetFiles(folder, "*.xml");
-        Array.Sort(fisiere);
+        string[] caiFisiere = Directory.GetFiles(folder, "*.xml");
+        Array.Sort(caiFisiere);
 
-        foreach (string fisier in fisiere)
+        foreach (string caleFisier in caiFisiere)
         {
             try
             {
-                XDocument doc = XDocument.Load(fisier);
-                SortedDictionary<int, int> vector = new SortedDictionary<int, int>();
+                XDocument xml = XDocument.Load(caleFisier);
+                Dictionary<int, int> frecvente = new Dictionary<int, int>();
                 List<string> categorii = new List<string>();
 
-                foreach (XElement element in doc.Descendants())
+                foreach (XElement element in xml.Descendants())
                 {
-                    string nume = element.Name.LocalName;
+                    string numeElement = element.Name.LocalName;
 
-                    if (nume == "title" || nume == "text")
+                    if (numeElement == "title" || numeElement == "text")
                     {
-                        string[] cuvinte = element.Value.Split(new char[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        string[] cuvinteBrute = Regex.Split(element.Value, "[^a-zA-Z0-9]+");
 
-                        foreach (string cuvant in cuvinte)
+                        foreach (string cuvantBrut in cuvinteBrute)
                         {
-                            string curat = CurataCuvant(cuvant);
+                            string cuvant = CurataCuvant(cuvantBrut);
 
-                            if (curat == "" || stopwords.Contains(curat))
+                            if (cuvant == "" || stopwords.Contains(cuvant))
                                 continue;
 
-                            string stem = stemmer.StemWord(curat);
+                            string radacina = stemmer.StemWord(cuvant);
 
-                            if (!indici.ContainsKey(stem))
+                            if (!dictionarGlobal.ContainsKey(radacina))
                             {
-                                indici[stem] = vocabular.Count;
-                                vocabular.Add(stem);
+                                dictionarGlobal[radacina] = vocabular.Count;
+                                vocabular.Add(radacina);
                             }
 
-                            int index = indici[stem];
+                            int index = dictionarGlobal[radacina];
 
-                            if (vector.ContainsKey(index))
-                                vector[index]++;
+                            if (frecvente.ContainsKey(index))
+                                frecvente[index]++;
                             else
-                                vector[index] = 1;
+                                frecvente[index] = 1;
                         }
                     }
 
-                    if (nume == "codes" && (string)element.Attribute("class") == "bip:topics:1.0")
+                    if (numeElement == "codes" && (string)element.Attribute("class") == "bip:topics:1.0")
                     {
-                        foreach (XElement cod in element.Elements())
+                        foreach (XElement elementCod in element.Elements())
                         {
-                            string valoare = (string)cod.Attribute("code");
+                            string codCategorie = (string)elementCod.Attribute("code");
 
-                            if (!string.IsNullOrWhiteSpace(valoare))
-                                categorii.Add(valoare);
+                            if (!string.IsNullOrWhiteSpace(codCategorie))
+                                categorii.Add(codCategorie);
                         }
                     }
                 }
 
-                string linie = Path.GetFileNameWithoutExtension(fisier) + " #";
-
-                foreach (KeyValuePair<int, int> pereche in vector)
-                    linie += " " + pereche.Key + ":" + pereche.Value;
-
-                linie += " # " + string.Join(" ", categorii);
-                linie += " # " + numeFolder;
-
-                documente.Add(linie);
+                Doc document = new Doc();
+                document.id = Path.GetFileNameWithoutExtension(caleFisier);
+                document.frecvente = frecvente;
+                document.categorii = categorii;
+                document.tipSet = tipSet;
+                documente.Add(document);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Eroare la " + fisier + ": " + ex.Message);
+                Console.WriteLine("Eroare la " + caleFisier + ": " + ex.Message);
             }
         }
     }
+}
+class Doc
+{
+    public string id;
+    public Dictionary<int, int> frecvente;
+    public List<string> categorii;
+    public string tipSet;
 }
 class PorterStemmer
 {
